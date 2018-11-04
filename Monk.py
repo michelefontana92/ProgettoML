@@ -82,12 +82,14 @@ def load_monk(filename):
 
 
 X, Y = load_monk("monks-2.train")
+X_valid, Y_valid = load_monk("monks-2.test")
 print(X[0])
 print(Y[0])
 
-mlp = MLP(17,2,2,eta = 0.4,alfa=0.9,use_fan_in=True,range_W_h_start=-0.4,range_W_h_end=0.4,range_W_o_start=-0.4,range_W_o_end=0.4 )
-mlp.train(X,Y,500)
+mlp = MLP(17,2,2,eta = 0.7,alfa=0.5,use_fan_in=True,range_W_h_start=-0.2,range_W_h_end=0.2,range_W_o_start=-0.2,range_W_o_end=0.2 )
+mlp.train(X,Y,X_valid,Y_valid,500)
 plt.plot(mlp.errors_list, label='Training Error',ls="-")
+plt.plot(mlp.valid_errors_list, label='Validation Error')
 plt.title('Prova')
 plt.ylabel('loss')
 plt.xlabel('epoch')

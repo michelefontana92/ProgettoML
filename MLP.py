@@ -88,6 +88,14 @@ class MLP:
         self._errors = value
 
     @property
+    def valid_errors_list(self):
+        return self._valid_errors
+
+    @valid_errors_list.setter
+    def valid_errors_list(self, value):
+        self._valid_errors = value
+
+    @property
     def W_old_hidden(self):
         return self._W_old_hidden
 
@@ -136,6 +144,7 @@ class MLP:
         self._W_old_hidden = np.zeros((n_hidden,n_input))
         self._W_old_output = np.zeros((n_output, n_hidden))
         self._errors = []
+        self._valid_errors = []
 
         self.weight_initializer(range_W_h_start,range_W_h_end,range_W_o_start,range_W_o_end,use_fan_in)
 
@@ -194,14 +203,18 @@ class MLP:
 
         return deltaW_output, deltaW_hidden
 
-    def train(self,X,Y,n_epochs):
+    def train(self,X,Y,X_valid = None, Y_valid = None,n_epochs = 1000):
+
+        if X_valid is not None:
+            assert Y_valid is not None
 
         assert X.shape[0] == Y.shape[0]
+
         n_examples = X.shape[0]
 
         for epoch in range(n_epochs):
             error = 0
-
+            err_valid = 0
             deltaW_out = np.zeros(self.weight_output.shape)
             deltaW_hidd = np.zeros(self.weight_hidden.shape)
 
@@ -214,6 +227,12 @@ class MLP:
 
                 error += self.compute_error_pattern_norm(out,target)
 
+                if X_valid is not None:
+                    x_valid_i = np.reshape(X_valid[i],(X_valid[i].shape[0],-1))
+                    y_valid_i = np.reshape(Y_valid[i], (Y_valid[i].shape[0], -1))
+                    out_valid = self.feedforward(x_valid_i)
+                    err_valid += self.compute_error_pattern_norm(out_valid,y_valid_i)
+
                 delta_out = self.output_layer.compute_layer_delta(target)
                 self.hidden_layer.compute_layer_delta(self.weight_output,delta_out)
 
@@ -225,7 +244,16 @@ class MLP:
             error = error / n_examples
             self.errors_list.append(error)
 
-            print("Epoch %s/%s: Error: %s" % (epoch+1,n_epochs,error))
+            if X_valid is not None:
+                err_valid = err_valid / n_examples
+                self._valid_errors.append(err_valid)
+
+            if X_valid is not None:
+                print("Epoch %s/%s: Train Error: %s Validation Error %s" % (epoch + 1, n_epochs, error,err_valid))
+
+            else:
+                print("Epoch %s/%s: Error: %s" % (epoch+1,n_epochs,error))
+
             deltaW_out = deltaW_out / n_examples
             deltaW_hidd = deltaW_hidd / n_examples
 
@@ -235,8 +263,8 @@ class MLP:
             new_delta_W_hidden = (self._eta * deltaW_hidd) + (self._alfa * self._W_old_hidden)
             self._W_h = self.weight_hidden + new_delta_W_hidden - (self._lambda * self.weight_hidden)
 
-            self._W_old_hidden = new_delta_W_hidden
-            self._W_old_output = new_delta_W_output
+            self._W_old_hidden = np.copy(new_delta_W_hidden)
+            self._W_old_output = np.copy(new_delta_W_output)
 
         return self.weight_output, self.weight_hidden
 
