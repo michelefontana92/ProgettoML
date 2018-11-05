@@ -106,7 +106,7 @@ class MLP:
 
     @property
     def W_old_output(self):
-        return self._W_old_hidden
+        return self._W_old_output
 
     @W_old_output.setter
     def W_old_output(self, value):
@@ -150,17 +150,6 @@ class MLP:
 
         self._hidden_layer = HiddenLayer(self._n_hidden)
         self._output_layer = OutputLayer(self._n_output)
-
-    def compute_error_pattern(self,output,target):
-        assert output.shape[1] == 1
-        assert target.shape[1] == 1
-        assert output.shape[0] == target.shape[0]
-
-        error = 0
-        for i in range(output.shape[0]):
-            error += (target[i] - output[i])**2
-
-        return 0.5 * error
 
     def compute_error_pattern_norm(self,output,target):
         assert output.shape[1] == 1
@@ -211,6 +200,9 @@ class MLP:
         assert X.shape[0] == Y.shape[0]
 
         n_examples = X.shape[0]
+        n_valid_examples = 0
+        if X_valid is not None:
+            n_valid_examples = X_valid.shape[0]
 
         for epoch in range(n_epochs):
             error = 0
@@ -220,32 +212,34 @@ class MLP:
 
             for i in range (n_examples):
 
-                x = np.reshape(X[i],(X[i].shape[0],-1))
-                target = np.reshape(Y[i],(Y[i].shape[0],-1))
+                x = np.reshape(X[i],(X.shape[1],-1))
+                target = np.reshape(Y[i],(Y.shape[1],-1))
 
                 out = self.feedforward(x)
 
                 error += self.compute_error_pattern_norm(out,target)
 
-                if X_valid is not None:
-                    x_valid_i = np.reshape(X_valid[i],(X_valid[i].shape[0],-1))
-                    y_valid_i = np.reshape(Y_valid[i], (Y_valid[i].shape[0], -1))
-                    out_valid = self.feedforward(x_valid_i)
-                    err_valid += self.compute_error_pattern_norm(out_valid,y_valid_i)
 
                 delta_out = self.output_layer.compute_layer_delta(target)
                 self.hidden_layer.compute_layer_delta(self.weight_output,delta_out)
 
                 dW_out, dW_hidd = self.backpropagation(x)
 
-                deltaW_out += dW_out
-                deltaW_hidd += dW_hidd
+                deltaW_out = deltaW_out + dW_out
+                deltaW_hidd = deltaW_hidd + dW_hidd
 
             error = error / n_examples
             self.errors_list.append(error)
 
             if X_valid is not None:
-                err_valid = err_valid / n_examples
+
+                for i in range(n_valid_examples):
+                    x_valid_i = np.reshape(X_valid[i], (X_valid[i].shape[0], -1))
+                    y_valid_i = np.reshape(Y_valid[i], (Y_valid[i].shape[0], -1))
+                    out_valid = self.feedforward(x_valid_i)
+                    err_valid += self.compute_error_pattern_norm(out_valid, y_valid_i)
+
+                err_valid = err_valid / n_valid_examples
                 self._valid_errors.append(err_valid)
 
             if X_valid is not None:
@@ -258,13 +252,13 @@ class MLP:
             deltaW_hidd = deltaW_hidd / n_examples
 
             new_delta_W_output = (self._eta * deltaW_out) + (self._alfa * self._W_old_output)
-            self._W_o = self.weight_output + new_delta_W_output - (self._lambda * self.weight_output)
+            self.weight_output = self.weight_output + new_delta_W_output - (self._lambda * self.weight_output)
 
             new_delta_W_hidden = (self._eta * deltaW_hidd) + (self._alfa * self._W_old_hidden)
-            self._W_h = self.weight_hidden + new_delta_W_hidden - (self._lambda * self.weight_hidden)
+            self.weight_hidden = self.weight_hidden + new_delta_W_hidden - (self._lambda * self.weight_hidden)
 
-            self._W_old_hidden = np.copy(new_delta_W_hidden)
-            self._W_old_output = np.copy(new_delta_W_output)
+            self.W_old_hidden = new_delta_W_hidden
+            self.W_old_output = new_delta_W_output
 
         return self.weight_output, self.weight_hidden
 

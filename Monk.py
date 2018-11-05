@@ -2,34 +2,34 @@ import numpy as np
 from MLP import *
 # 2(target) 3  3  2  3 4 2
 def encode_target(x):
-    if x == 0:
-        return (1,0)
+    if x == 1:
+        return (1,)
     else:
-        return (0,1)
+        return (0,)
 
 def encode_2(x):
     if x == 1:
-        return (1,0)
-    else:
         return (0,1)
+    else:
+        return (1,0)
 
 def encode_3(x):
     if x == 1:
-        return (1,0,0)
+        return (0,0,1)
     if x == 2:
         return (0,1,0)
     else:
-        return (0,0,1)
+        return (1,0,0)
 
 def encode_4(x):
     if x == 1:
-        return (1,0,0,0)
-    if x == 2:
-        return (0,1,0,0)
-    if x == 3:
-        return (0,0,1,0)
-    else:
         return (0,0,0,1)
+    if x == 2:
+        return (0,0,1,0)
+    if x == 3:
+        return (0,1,0,0)
+    else:
+        return (1,0,0,0)
 
 def load_monk(filename):
     with open(filename) as f:
@@ -48,14 +48,18 @@ def load_monk(filename):
                     else:
                         res.append(encode_4(int(l)))
 
+        print(res)
         res = np.array(res).reshape(-1,7)
-        X = np.zeros((res.shape[0],19))
+        X = np.zeros((res.shape[0],18))
 
         for (riga_x,riga) in enumerate(res):
             i =0
             colonna_x = 0
             for colonne in riga:
-                if i == 0 or i == 3 or i == 6:
+                if i == 0:
+                    X[riga_x, colonna_x] = riga[i][0]
+                    i += 1
+                elif i == 3 or i == 6:
                      X[riga_x,colonna_x]= riga[i][0]
                      X[riga_x, colonna_x + 1] = riga[i][1]
                      colonna_x+=2
@@ -75,23 +79,26 @@ def load_monk(filename):
                         colonna_x += 4
                         i += 1
 
-        X_train = X[:,2:]
-        Y_train = X[:,0:2]
+        X_train = np.array(X[:,1:])
+        Y_train = np.array(X[:,0]).reshape(X.shape[0],-1)
         return X_train, Y_train
 
 
 
 X, Y = load_monk("monks-2.train")
 X_valid, Y_valid = load_monk("monks-2.test")
-print(X[0])
-print(Y[0])
+print(X.shape)
+print(Y.shape)
+print(X_valid.shape)
+print(Y_valid.shape)
 
-mlp = MLP(17,2,2,eta = 0.7,alfa=0.5,use_fan_in=True,range_W_h_start=-0.2,range_W_h_end=0.2,range_W_o_start=-0.2,range_W_o_end=0.2 )
-mlp.train(X,Y,X_valid,Y_valid,500)
+mlp = MLP(17,2,1,eta = 0.6,alfa=0.9,use_fan_in=True,range_W_h_start=-0.7,range_W_h_end=0.7,range_W_o_start=-0.7,range_W_o_end=0.7 )
+mlp.train(X,Y,X_valid,Y_valid,300)
 plt.plot(mlp.errors_list, label='Training Error',ls="-")
 plt.plot(mlp.valid_errors_list, label='Validation Error')
-plt.title('Prova')
+plt.title('Monk')
 plt.ylabel('loss')
+plt.grid(True)
 plt.xlabel('epoch')
 plt.legend(loc='upper right',prop={'size':14})
 plt.show()

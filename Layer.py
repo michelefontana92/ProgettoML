@@ -1,12 +1,11 @@
 import numpy as np
 from Unit import *
 
-
 class Layer:
 
     @property
     def n_units(self):
-        return np.copy(self._n_units)
+        return self._n_units
 
     @n_units.setter
     def n_units(self,value):
@@ -38,7 +37,7 @@ class Layer:
 
     @property
     def layer_net(self):
-        return np.copy(self._layer_net)
+        return self._layer_net
 
     @layer_net.setter
     def layer_net(self, value):
@@ -71,14 +70,14 @@ class Layer:
             self._layer_output[i] = unit.compute_unit_output(wi, x)
             self._layer_net[i] = unit.net
 
-        return np.copy(self._layer_output)
+        return self._layer_output
 
     def compute_layer_gradient(self):
 
         for(i, unit) in enumerate(self._units):
             self._layer_gradient[i] = unit.compute_unit_gradient()
 
-        return np.copy(self._layer_gradient)
+        return self._layer_gradient
 
 
 class HiddenLayer(Layer):
@@ -102,9 +101,7 @@ class HiddenLayer(Layer):
             self.layer_delta[i] = d
             self.layer_gradient[i] = unit.gradient
 
-
-
-        return np.copy(self.layer_delta)
+        return self.layer_delta
 
 
 class OutputLayer(Layer):
@@ -127,7 +124,7 @@ class OutputLayer(Layer):
             self.layer_delta[i] = d
             self.layer_gradient[i] = unit.gradient
 
-        return np.copy(self.layer_delta)
+        return self.layer_delta
 
 """
 W = np.array([[0,0,0],[1,2,3]])
@@ -140,8 +137,8 @@ print("W_up=",W_up)
 print("delta_up=",delta_up)
 a = np.reshape(np.array(W[0]),(3,-1))
 print(a.shape)
-layer = HiddenLayer(2,W)
-out = layer.compute_layer_output(x.T)
+layer = HiddenLayer(2)
+out = layer.compute_layer_output(x.T,W)
 print('out=',out)
 delta = layer.compute_layer_delta(W_up,delta_up.T)
 print('delta=',delta)
@@ -153,12 +150,10 @@ target=np.array([[0.99330715,0.5,0.3]])
 print("W=",W_up)
 print("x=",x)
 print('target=',target.T)
-layer_out = OutputLayer(3,W_up)
-out = layer_out.compute_layer_output(x.T)
+layer_out = OutputLayer(3)
+out = layer_out.compute_layer_output(x.T,W_up)
 print('out=',out)
 delta = layer_out.compute_layer_delta(target.T)
 print('layer delta=',delta)
-print('layer gradient=',layer_out.layer_gradient)"""
-
-
-
+print('layer gradient=',layer_out.layer_gradient)
+"""

@@ -2,11 +2,11 @@ import numpy as np
 
 
 def sigmoid(x):
-    return 1./(1+np.exp(-x));
+    return float(1./(1+np.exp(-x)))
 
 
 def sigmoid_gradient(x):
-    return x * (1-x);
+    return float(x * (1-x))
 
 
 class Unit:
@@ -44,23 +44,23 @@ class Unit:
         self._delta = value
 
     def __init__(self):
-        self._net = None
-        self._out = None
-        self._delta = None
-        self._gradient = None
+        self._net = 0.0
+        self._out = 0.0
+        self._delta = 0.0
+        self._gradient = 0.0
 
     def compute_unit_output(self,w,x):
         assert(x.shape[1] == 1)
-        assert(w.shape[1] == 1)
+        assert(x.shape[1] == 1)
         assert (w.shape == x.shape)
 
-        self._net = np.dot(w.T, x);
+        self._net = float(np.dot(w.T, x))
         self._out = sigmoid(self._net);
-        return np.copy(self._out)
+        return float(self._out)
 
     def compute_unit_gradient(self):
         self._gradient = sigmoid_gradient(self._out)
-        return np.copy(self._gradient)
+        return self._gradient
 
 
 class OutputUnit(Unit):
@@ -70,8 +70,8 @@ class OutputUnit(Unit):
 
     def compute_unit_delta(self,target):
         self._gradient = self.compute_unit_gradient()
-        self._delta = (target - self._out ) * self._gradient
-        return np.copy(self._delta)
+        self._delta = float(target - self.out) * self.gradient
+        return self._delta
 
 
 class HiddenUnit(Unit):
@@ -86,24 +86,23 @@ class HiddenUnit(Unit):
         assert w_up.shape[0] == delta_up.shape[0]
 
         self._gradient = self.compute_unit_gradient()
-        self._delta = np.dot(w_up.T,delta_up) * self.gradient
-        return np.copy(self._delta)
-
+        self._delta = float(np.dot(w_up.T,delta_up)* self._gradient)
+        return self._delta
 """
 X = np.array([[1,2,3]])
 W = np.array([[1,2,3]])
 print(X.shape)
 assert (X.shape == (1,3))
 unit = Unit()
-print(unit.compute_unit_output(W.T,X.T))
-print(unit.compute_unit_gradient())
-print(unit.gradient)
+print("out=",unit.compute_unit_output(W.T,X.T))
+print("gradient",unit.compute_unit_gradient())
+print("gradient",unit.gradient)
 
 Y = np.array([[2]])
 out_unit = OutputUnit()
 out_unit.compute_unit_output(W.T,X.T)
 out_unit.compute_unit_delta(Y.T)
-print(out_unit.delta)
+print("delta",out_unit.delta)
 
 W_up = np.array([[1,2,3]])
 delta_up = np.array([[1,2,3]])
@@ -111,7 +110,9 @@ delta_up = np.array([[1,2,3]])
 hidden = HiddenUnit()
 hidden.compute_unit_output(W.T,X.T)
 hidden.compute_unit_delta(W_up.T,delta_up.T)
-print(hidden.delta)"""
+print("hidden_out",hidden.out)
+print("hidden_gradient",hidden.gradient)
+print("hidden_delta",hidden.delta)"""
 
 
 
