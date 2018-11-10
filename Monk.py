@@ -9,25 +9,25 @@ def encode_target(x):
 
 def encode_2(x):
     if x == 1:
-        return (0,1)
-    else:
         return (1,0)
+    else:
+        return (0,1)
 
 def encode_3(x):
     if x == 1:
-        return (0,0,1)
+        return (1,0,0)
     if x == 2:
         return (0,1,0)
     else:
-        return (1,0,0)
+        return (0,0,1)
 
 def encode_4(x):
     if x == 1:
-        return (0,0,0,1)
+        return (1,0,0,0)
     if x == 2:
-        return (0,0,1,0)
-    if x == 3:
         return (0,1,0,0)
+    if x == 3:
+        return (0,0,1,0)
     else:
         return (1,0,0,0)
 
@@ -48,7 +48,7 @@ def load_monk(filename):
                     else:
                         res.append(encode_4(int(l)))
 
-        print(res)
+
         res = np.array(res).reshape(-1,7)
         X = np.zeros((res.shape[0],18))
 
@@ -82,15 +82,6 @@ def load_monk(filename):
         X_train = np.array(X[:,1:])
         Y_train = np.array(X[:,0]).reshape(X.shape[0],-1)
         return X_train, Y_train
-
-
-X, Y = load_monk("monks-2.train")
-X_valid, Y_valid = load_monk("monks-2.test")
-print(X.shape)
-print(Y.shape)
-print(X_valid.shape)
-print(Y_valid.shape)
-
 
 
 

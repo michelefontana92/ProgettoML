@@ -55,10 +55,10 @@ class Layer:
 
         self._n_units = n_units
         self._units = []
-        self._layer_output = np.zeros((n_units,1))
-        self._layer_delta = np.zeros((n_units,1))
-        self._layer_net = np.zeros((n_units,1))
-        self._layer_gradient = np.zeros((n_units,1))
+        self._layer_output = np.zeros((self._n_units,1))
+        self._layer_delta = np.zeros((self._n_units,1))
+        self._layer_net = np.zeros((self._n_units,1))
+        self._layer_gradient = np.zeros((self._n_units,1))
 
     def compute_layer_output(self,x,weights):
         assert x.shape[1] == 1
@@ -94,10 +94,9 @@ class HiddenLayer(Layer):
         assert delta_up.shape[1] == 1
 
         for (i, unit) in enumerate(self.units):
+
             wi = np.reshape(np.array(weights_up[:,i]), (weights_up.shape[0], -1))
-
             d = unit.compute_unit_delta(wi,delta_up)
-
             self.layer_delta[i] = d
             self.layer_gradient[i] = unit.gradient
 
@@ -125,6 +124,7 @@ class OutputLayer(Layer):
             self.layer_gradient[i] = unit.gradient
 
         return self.layer_delta
+
 
 """
 W = np.array([[0,0,0],[1,2,3]])

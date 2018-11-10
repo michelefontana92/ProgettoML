@@ -96,6 +96,22 @@ class MLP:
         self._valid_errors = value
 
     @property
+    def valid_accuracies_list(self):
+        return self._valid_accuracies
+
+    @valid_accuracies_list.setter
+    def valid_accuracies_list(self, value):
+        self._valid_accuracies = value
+
+    @property
+    def accuracies_list(self):
+        return self._accuracies
+
+    @accuracies_list.setter
+    def accuracies_list(self, value):
+        self._accuracies = value
+
+    @property
     def W_old_hidden(self):
         return self._W_old_hidden
 
@@ -141,15 +157,18 @@ class MLP:
         self._alfa = alfa
         self._hidden_layer = None
         self._output_layer = None
-        self._W_old_hidden = np.zeros((n_hidden,n_input))
+        self._W_old_hidden = np.zeros((n_hidden,n_input ))
         self._W_old_output = np.zeros((n_output, n_hidden))
         self._errors = []
         self._valid_errors = []
+        self._accuracies = []
+        self._valid_accuracies = []
 
         self.weight_initializer(range_W_h_start,range_W_h_end,range_W_o_start,range_W_o_end,use_fan_in)
 
         self._hidden_layer = HiddenLayer(self._n_hidden)
         self._output_layer = OutputLayer(self._n_output)
+
 
     def compute_error_pattern_norm(self,output,target):
         assert output.shape[1] == 1
@@ -160,9 +179,17 @@ class MLP:
 
         return 0.5 * error
 
+    def compute_accuracy(self,output,target,threshold=0.5):
+
+        assert output.shape[1] == 1
+        assert output.shape[0] == target.shape[0] == 1
+
+        return float((output[0] > threshold) == target[0])
+
     def feedforward(self,x):
         assert x.shape[1] == 1
         assert x.shape[0] == self._n_input
+
         hidd_out = self.hidden_layer.compute_layer_output(x,self.weight_hidden)
 
         out = self.output_layer.compute_layer_output(hidd_out,self.weight_output)
@@ -171,8 +198,8 @@ class MLP:
 
     def backpropagation(self,x):
 
-        assert x.shape[1] == 1
-        assert x.shape[0] == self.n_input
+        #assert x.shape[1] == 1
+        #assert x.shape[0] == self.n_input
 
         deltaW_output = np.zeros((self.weight_output.shape[0],self.weight_output.shape[1]))
 
@@ -192,7 +219,7 @@ class MLP:
 
         return deltaW_output, deltaW_hidden
 
-    def train(self,X,Y,X_valid = None, Y_valid = None,n_epochs = 1000):
+    def train(self,X,Y,X_valid = None, Y_valid = None,n_epochs = 1000, check_accuracy = False):
 
         if X_valid is not None:
             assert Y_valid is not None
@@ -206,6 +233,8 @@ class MLP:
 
         for epoch in range(n_epochs):
             error = 0
+            accuracy = 0
+            acc_valid = 0
             err_valid = 0
             deltaW_out = np.zeros(self.weight_output.shape)
             deltaW_hidd = np.zeros(self.weight_hidden.shape)
@@ -219,6 +248,8 @@ class MLP:
 
                 error += self.compute_error_pattern_norm(out,target)
 
+                if check_accuracy:
+                    accuracy += self.compute_accuracy(out,target)
 
                 delta_out = self.output_layer.compute_layer_delta(target)
                 self.hidden_layer.compute_layer_delta(self.weight_output,delta_out)
@@ -231,6 +262,10 @@ class MLP:
             error = error / n_examples
             self.errors_list.append(error)
 
+            if check_accuracy:
+                accuracy = accuracy  / n_examples
+                self._accuracies.append(accuracy)
+
             if X_valid is not None:
 
                 for i in range(n_valid_examples):
@@ -238,13 +273,26 @@ class MLP:
                     y_valid_i = np.reshape(Y_valid[i], (Y_valid[i].shape[0], -1))
                     out_valid = self.feedforward(x_valid_i)
                     err_valid += self.compute_error_pattern_norm(out_valid, y_valid_i)
+                    if check_accuracy:
+                        acc_valid += self.compute_accuracy(out_valid, y_valid_i)
 
                 err_valid = err_valid / n_valid_examples
                 self._valid_errors.append(err_valid)
 
-            if X_valid is not None:
+                if check_accuracy:
+                    acc_valid = ((acc_valid) / n_valid_examples)
+                    self._valid_accuracies.append(acc_valid)
+
+            if X_valid is not None and not check_accuracy:
                 print("Epoch %s/%s: Train Error: %s Validation Error %s" % (epoch + 1, n_epochs, error,err_valid))
 
+            elif X_valid is not None and check_accuracy:
+                print("Epoch %s/%s: Train Error: %s Train Accuracy % s Valid Error %s Valid Accuracy % s" %
+                      (epoch + 1, n_epochs, error, accuracy, err_valid, acc_valid))
+
+            elif X_valid is None and check_accuracy:
+                print("Epoch %s/%s: Train Error: %s Train Accuracy % s" %
+                      (epoch + 1, n_epochs, error, accuracy))
             else:
                 print("Epoch %s/%s: Error: %s" % (epoch+1,n_epochs,error))
 
@@ -342,3 +390,4 @@ plt.xlabel('epoch')
 plt.legend(loc='upper right',prop={'size':14})
 plt.show()
 """
+

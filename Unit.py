@@ -88,6 +88,9 @@ class HiddenUnit(Unit):
         self._gradient = self.compute_unit_gradient()
         self._delta = float(np.dot(w_up.T,delta_up)* self._gradient)
         return self._delta
+
+
+
 """
 X = np.array([[1,2,3]])
 W = np.array([[1,2,3]])
