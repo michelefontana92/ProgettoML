@@ -29,7 +29,7 @@ def encode_4(x):
     if x == 3:
         return (0,0,1,0)
     else:
-        return (1,0,0,0)
+        return (0,0,0,1)
 
 def load_monk(filename):
     with open(filename) as f:
@@ -53,31 +53,31 @@ def load_monk(filename):
         X = np.zeros((res.shape[0],18))
 
         for (riga_x,riga) in enumerate(res):
-            i =0
+
             colonna_x = 0
-            for colonne in riga:
+            for (i,tuple) in enumerate(riga):
+
                 if i == 0:
-                    X[riga_x, colonna_x] = riga[i][0]
-                    i += 1
+                    X[riga_x, colonna_x] = tuple[0]
+                    colonna_x += 1
+
                 elif i == 3 or i == 6:
-                     X[riga_x,colonna_x]= riga[i][0]
-                     X[riga_x, colonna_x + 1] = riga[i][1]
+                     X[riga_x,colonna_x]= tuple[0]
+                     X[riga_x, colonna_x + 1] = tuple[1]
                      colonna_x+=2
-                     i+=1
-                else:
-                    if i == 1 or i == 2 or i == 4:
-                        X[riga_x, colonna_x] = riga[i][0]
-                        X[riga_x, colonna_x + 1] = riga[i][1]
-                        X[riga_x, colonna_x + 2] = riga[i][2]
+
+                elif i == 1 or i == 2 or i == 4:
+                        X[riga_x, colonna_x] = tuple[0]
+                        X[riga_x, colonna_x + 1] = tuple[1]
+                        X[riga_x, colonna_x + 2] = tuple[2]
                         colonna_x += 3
-                        i += 1
-                    else:
-                        X[riga_x, colonna_x] = riga[i][0]
-                        X[riga_x, colonna_x + 1] = riga[i][1]
-                        X[riga_x, colonna_x + 2] = riga[i][2]
-                        X[riga_x, colonna_x + 3] = riga[i][3]
+                else:
+                        X[riga_x, colonna_x] = tuple[0]
+                        X[riga_x, colonna_x + 1] = tuple[1]
+                        X[riga_x, colonna_x + 2] = tuple[2]
+                        X[riga_x, colonna_x + 3] = tuple[3]
                         colonna_x += 4
-                        i += 1
+
 
         X_train = np.array(X[:,1:])
         Y_train = np.array(X[:,0]).reshape(X.shape[0],-1)

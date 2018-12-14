@@ -1,7 +1,7 @@
 import numpy as np
 from Layer import *
 import matplotlib.pyplot as plt
-
+from Utils import *
 
 class MLP:
 
@@ -129,6 +129,14 @@ class MLP:
         assert self._W_old_output.shape == value.shape
         self._W_old_output = value
 
+    @property
+    def output_epochs(self):
+        return self._output_epochs
+
+    @property
+    def output_epochs_valid(self):
+        return self._output_epochs_valid
+
     def weight_initializer(self,range_W_h_start, range_W_h_end,
                  range_W_o_start, range_W_o_end,use_fan_in):
 
@@ -136,6 +144,9 @@ class MLP:
 
             self._W_h = np.random.uniform(range_W_h_start / self._n_input,range_W_h_end / self._n_input,
                                           (self._W_h.shape[0],self._W_h.shape[1]))
+
+            #self._W_o = np.random.uniform(range_W_o_start / self._n_hidden, range_W_o_end / self._n_hidden,
+                #                          (self._W_o.shape[0], self._W_o.shape[1]))
 
         else:
             self._W_h = np.random.uniform(range_W_h_start, range_W_h_end,
@@ -145,7 +156,7 @@ class MLP:
                                           (self._W_o.shape[0], self._W_o.shape[1]))
 
     def __init__(self,n_input,n_hidden,n_output,eta=0.1,lambd=0.0,alfa=0.0,range_W_h_start = -0.7, range_W_h_end = 0.7,
-                 range_W_o_start=-0.7, range_W_o_end=0.7,use_fan_in=False):
+                 range_W_o_start=-0.7, range_W_o_end=0.7,use_fan_in=False,activation_hidden = "sigmoid", activation_output = "sigmoid"):
 
         self._n_hidden = n_hidden
         self._n_output = n_output
@@ -157,8 +168,10 @@ class MLP:
         self._alfa = alfa
         self._hidden_layer = None
         self._output_layer = None
-        self._W_old_hidden = np.zeros((n_hidden,n_input ))
+        self._W_old_hidden = np.zeros((n_hidden,n_input))
         self._W_old_output = np.zeros((n_output, n_hidden))
+        self._old_bias_hidden = 0.0
+        self._old_bias_output = 0.0
         self._errors = []
         self._valid_errors = []
         self._accuracies = []
@@ -166,32 +179,17 @@ class MLP:
 
         self.weight_initializer(range_W_h_start,range_W_h_end,range_W_o_start,range_W_o_end,use_fan_in)
 
-        self._hidden_layer = HiddenLayer(self._n_hidden)
-        self._output_layer = OutputLayer(self._n_output)
+        self._hidden_layer = HiddenLayer(self._n_hidden, activation_hidden)
+        self._output_layer = OutputLayer(self._n_output,activation_output)
 
-
-    def compute_error_pattern_norm(self,output,target):
-        assert output.shape[1] == 1
-        assert target.shape[1] == 1
-        assert output.shape[0] == target.shape[0]
-
-        error = np.linalg.norm(target - output,2)**2
-
-        return 0.5 * error
-
-    def compute_accuracy(self,output,target,threshold=0.5):
-
-        assert output.shape[1] == 1
-        assert output.shape[0] == target.shape[0] == 1
-
-        return float((output[0] > threshold) == target[0])
+        self._output_epochs = []
+        self._output_epochs_valid = []
 
     def feedforward(self,x):
         assert x.shape[1] == 1
         assert x.shape[0] == self._n_input
 
         hidd_out = self.hidden_layer.compute_layer_output(x,self.weight_hidden)
-
         out = self.output_layer.compute_layer_output(hidd_out,self.weight_output)
 
         return out
@@ -202,22 +200,43 @@ class MLP:
         #assert x.shape[0] == self.n_input
 
         deltaW_output = np.zeros((self.weight_output.shape[0],self.weight_output.shape[1]))
+        deltaW_hidden = np.zeros((self.weight_hidden.shape[0], self.weight_hidden.shape[1]))
+
+        delta_bias_hidden = 0.
+        delta_bias_output = 0.
 
         output_layer_delta = self.output_layer.layer_delta
         hidden_layer_delta = self.hidden_layer.layer_delta
         hidden_layer_output = self.hidden_layer.layer_output
 
+        for i in range(deltaW_output.shape[0]):
+            delta_bias_output += output_layer_delta[i]
+
+        for i in range(deltaW_hidden.shape[0]):
+            delta_bias_hidden += hidden_layer_delta[i]
+
         for i in range(self.n_output):
             for j in range(self.n_hidden):
-                deltaW_output[i][j] = output_layer_delta[i] * hidden_layer_output[j]
-
-        deltaW_hidden = np.zeros((self.weight_hidden.shape[0], self.weight_hidden.shape[1]))
+                    deltaW_output[i][j] = output_layer_delta[i] * hidden_layer_output[j]
 
         for i in range(self.n_hidden):
             for j in range(self.n_input):
                 deltaW_hidden[i][j] = hidden_layer_delta[i] * x[j]
 
-        return deltaW_output, deltaW_hidden
+        return deltaW_output, deltaW_hidden, delta_bias_output, delta_bias_hidden
+
+    def predict_class(self,x,threshold = 0.5):
+        assert x.shape[1] == 1
+        assert x.shape[0] == self._n_input
+
+        out = self.feedforward(x)
+        if out >= threshold:
+            out = 1
+
+        else:
+            out = 0
+
+        return out
 
     def train(self,X,Y,X_valid = None, Y_valid = None,n_epochs = 1000, check_accuracy = False):
 
@@ -228,6 +247,7 @@ class MLP:
 
         n_examples = X.shape[0]
         n_valid_examples = 0
+
         if X_valid is not None:
             n_valid_examples = X_valid.shape[0]
 
@@ -236,31 +256,48 @@ class MLP:
             accuracy = 0
             acc_valid = 0
             err_valid = 0
+
             deltaW_out = np.zeros(self.weight_output.shape)
             deltaW_hidd = np.zeros(self.weight_hidden.shape)
 
-            for i in range (n_examples):
+            delta_bias_out = 0.0
+            delta_bias_hidden = 0.0
+
+            output = np.zeros(Y.shape)
+
+            if X_valid is not None:
+                output_valid = np.zeros(Y_valid.shape)
+
+
+            for i in range(n_examples):
 
                 x = np.reshape(X[i],(X.shape[1],-1))
                 target = np.reshape(Y[i],(Y.shape[1],-1))
 
                 out = self.feedforward(x)
 
-                error += self.compute_error_pattern_norm(out,target)
+                output[i] = out
+
+                error += compute_error(out,target)
 
                 if check_accuracy:
-                    accuracy += self.compute_accuracy(out,target)
+                    accuracy += compute_accuracy(out,target)
 
                 delta_out = self.output_layer.compute_layer_delta(target)
                 self.hidden_layer.compute_layer_delta(self.weight_output,delta_out)
 
-                dW_out, dW_hidd = self.backpropagation(x)
+                dW_out, dW_hidd, dB_out, dB_hidd = self.backpropagation(x)
 
                 deltaW_out = deltaW_out + dW_out
                 deltaW_hidd = deltaW_hidd + dW_hidd
 
+                delta_bias_out += dB_out
+                delta_bias_hidden += dB_hidd
+
             error = error / n_examples
             self.errors_list.append(error)
+
+            self._output_epochs.append(output)
 
             if check_accuracy:
                 accuracy = accuracy  / n_examples
@@ -269,18 +306,24 @@ class MLP:
             if X_valid is not None:
 
                 for i in range(n_valid_examples):
+
                     x_valid_i = np.reshape(X_valid[i], (X_valid[i].shape[0], -1))
                     y_valid_i = np.reshape(Y_valid[i], (Y_valid[i].shape[0], -1))
-                    out_valid = self.feedforward(x_valid_i)
-                    err_valid += self.compute_error_pattern_norm(out_valid, y_valid_i)
-                    if check_accuracy:
-                        acc_valid += self.compute_accuracy(out_valid, y_valid_i)
 
+                    out_valid = self.feedforward(x_valid_i)
+                    output_valid[i] = out_valid
+
+                    err_valid += compute_error(out_valid, y_valid_i)
+
+                    if check_accuracy:
+                        acc_valid += compute_accuracy(out_valid, y_valid_i)
+
+                self.output_epochs_valid.append(output_valid)
                 err_valid = err_valid / n_valid_examples
                 self._valid_errors.append(err_valid)
 
                 if check_accuracy:
-                    acc_valid = ((acc_valid) / n_valid_examples)
+                    acc_valid = (acc_valid) / n_valid_examples
                     self._valid_accuracies.append(acc_valid)
 
             if X_valid is not None and not check_accuracy:
@@ -299,14 +342,25 @@ class MLP:
             deltaW_out = deltaW_out / n_examples
             deltaW_hidd = deltaW_hidd / n_examples
 
+            delta_bias_out /= n_examples
+            delta_bias_hidden /= n_examples
+
             new_delta_W_output = (self._eta * deltaW_out) + (self._alfa * self._W_old_output)
-            self.weight_output = self.weight_output + new_delta_W_output - (self._lambda * self.weight_output)
+            self._W_o = self.weight_output + new_delta_W_output - (self._lambda * self.weight_output)
 
             new_delta_W_hidden = (self._eta * deltaW_hidd) + (self._alfa * self._W_old_hidden)
-            self.weight_hidden = self.weight_hidden + new_delta_W_hidden - (self._lambda * self.weight_hidden)
+            self._W_h = self.weight_hidden + new_delta_W_hidden - (self._lambda * self.weight_hidden)
 
-            self.W_old_hidden = new_delta_W_hidden
-            self.W_old_output = new_delta_W_output
+            new_bias_output = (self._eta * delta_bias_out) + (self._alfa * self._old_bias_output)
+            new_bias_hidden = (self._eta * delta_bias_hidden) + (self._alfa * self._old_bias_hidden)
+
+            self.output_layer.update_bias(new_bias_hidden)
+            self.hidden_layer.update_bias(new_bias_hidden)
+
+            self._W_old_hidden = new_delta_W_hidden
+            self._W_old_output = new_delta_W_output
+            self._old_bias_output = new_bias_output
+            self._old_bias_hidden = new_bias_hidden
 
         return self.weight_output, self.weight_hidden
 

@@ -1,12 +1,40 @@
 import numpy as np
+import math
 
 
-def sigmoid(x):
-    return float(1./(1+np.exp(-x)))
+class ActivationFunction:
+
+    def compute_function(self,x):
+        raise NotImplementedError("This method has not been implemented")
+
+    def compute_function_gradient(self,x):
+        raise NotImplementedError("This method has not been implemented")
 
 
-def sigmoid_gradient(x):
-    return float(x * (1-x))
+class SigmoidActivation(ActivationFunction):
+
+    def compute_function(self,x):
+        return float(1. / (1 + np.exp(-x)))
+
+    def compute_function_gradient(self,x):
+        return float(x * (1 - x))
+
+
+class TanhActivation(ActivationFunction):
+    def compute_function(self, x):
+        return float(np.tanh(x))
+
+    def compute_function_gradient(self, x):
+        return float(1 - (x**2))
+
+
+class LinearActivation(ActivationFunction):
+
+    def compute_function(self,x):
+        return float(x)
+
+    def compute_function_gradient(self,x):
+        return float(1)
 
 
 class Unit:
@@ -43,30 +71,58 @@ class Unit:
     def delta(self,value):
         self._delta = value
 
-    def __init__(self):
+    @property
+    def activation(self):
+        return self._activation
+
+    @property
+    def bias(self):
+        return self._bias
+
+    @bias.setter
+    def bias(self,value):
+        self._bias = value
+
+    def __init__(self,activation = "sigmoid"):
         self._net = 0.0
         self._out = 0.0
         self._delta = 0.0
         self._gradient = 0.0
+        self._activation = None
+        self._bias = 0.0
+
+        if activation == "sigmoid":
+            self._activation = SigmoidActivation()
+
+        elif activation == "tanh":
+            self._activation = TanhActivation()
+
+        elif activation == "linear":
+            self._activation == LinearActivation()
+
+        else:
+            print("Unknown activation function... Using Sigmoid as default...")
+            self._activation = SigmoidActivation()
 
     def compute_unit_output(self,w,x):
-        assert(x.shape[1] == 1)
         assert(x.shape[1] == 1)
         assert (w.shape == x.shape)
 
         self._net = float(np.dot(w.T, x))
-        self._out = sigmoid(self._net);
+        #self._out = sigmoid(self._net);
+        self._out = self._activation.compute_function(self._net + self._bias)
         return float(self._out)
 
     def compute_unit_gradient(self):
-        self._gradient = sigmoid_gradient(self._out)
-        return self._gradient
+        #self._gradient = sigmoid_gradient(self._out)
+        self._gradient = self._activation.compute_function_gradient(self._out)
+        return float(self._gradient)
 
 
 class OutputUnit(Unit):
 
-    def __init__(self):
-        super(OutputUnit,self).__init__();
+    def __init__(self,activation):
+        super(OutputUnit,self).__init__(activation);
 
     def compute_unit_delta(self,target):
         self._gradient = self.compute_unit_gradient()
@@ -76,8 +132,8 @@ class OutputUnit(Unit):
 
 class HiddenUnit(Unit):
 
-    def __init__(self):
-        super(HiddenUnit,self).__init__()
+    def __init__(self,activation):
+        super(HiddenUnit,self).__init__(activation)
 
     def compute_unit_delta(self,w_up,delta_up):
 

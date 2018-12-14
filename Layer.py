@@ -79,18 +79,26 @@ class Layer:
 
         return self._layer_gradient
 
+    def update_bias(self, new_bias):
+
+        for (i,unit) in enumerate(self._units):
+            unit.bias = unit.bias + new_bias
+
 
 class HiddenLayer(Layer):
 
-    def __init__(self, n_units):
+    def __init__(self, n_units,activation_type):
         super(HiddenLayer,self).__init__(n_units)
 
         for i in range(0, n_units):
-            self.units.append(HiddenUnit())
+            self.units.append(HiddenUnit(activation_type))
 
     def compute_layer_delta(self, weights_up, delta_up):
+
         assert weights_up.shape[1] == self.n_units
+
         assert delta_up.shape[0] == weights_up.shape[0]
+
         assert delta_up.shape[1] == 1
 
         for (i, unit) in enumerate(self.units):
@@ -105,11 +113,11 @@ class HiddenLayer(Layer):
 
 class OutputLayer(Layer):
 
-    def __init__(self, n_units):
+    def __init__(self, n_units,activation_type):
         super(OutputLayer,self).__init__(n_units)
 
         for i in range(0, n_units):
-            self.units.append(OutputUnit())
+            self.units.append(OutputUnit(activation_type))
 
     def compute_layer_delta(self, target):
 
